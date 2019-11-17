@@ -18,12 +18,12 @@ type Transporter interface {
 	/*
 	 * 读取数据，返回一个Message与错误error
 	 */
-	Read() (*protocol.Message, error)
+	Read() (*protocol.RequestMessage, error)
 
 	/*
 	 * 写入数据
 	 */
-	Write(msg *protocol.Message) error
+	Write(msg *protocol.ResponseMessage) error
 }
 
 /*

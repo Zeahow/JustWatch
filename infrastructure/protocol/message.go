@@ -6,28 +6,28 @@ import (
 
 type RequestMessage struct {
 	MsgType      int32
-	RequiredBody RegisterReqBody
+	RequiredReqBody
 	OptionalBody interface{}
 }
 
 type ResponseMessage struct {
 	MsgType      int32
-	RequiredBody RegisterRespBody
+	RequiredRespBody
 	OptionalBody interface{}
 }
 
 /*
  * ResponseMessage转string
  */
-func (m *ResponseMessage) String() string {
-	byteM, _ := json.Marshal(m)
+func (r *ResponseMessage) String() string {
+	byteM, _ := json.Marshal(r)
 	return string(byteM)
 }
 
 /*
  * string转RequestMessage
  */
-func FromString(s string) (msg *RequestMessage, err error) {
+func String2RequestMessage(s string) (msg *RequestMessage, err error) {
 	msg = &RequestMessage{}
 	if err := json.Unmarshal([]byte(s), msg); err != nil {
 		return nil, err
@@ -60,4 +60,12 @@ func FromString(s string) (msg *RequestMessage, err error) {
 	}
 
 	return msg, nil
+}
+
+/*
+ * 为应答消息 r 携带上必须字段后返回
+ */
+func (r *ResponseMessage) WithRequired(reqUserId int64, success bool, msg string) *ResponseMessage {
+	r.ReqUserId, r.Success, r.Msg = reqUserId, success, msg
+	return r
 }

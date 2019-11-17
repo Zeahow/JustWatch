@@ -24,12 +24,12 @@ var (
 	TableId2Table = make(map[int64]*Table, conf.DefaultTableNum)
 )
 
-func NewTable(creatorUid int64) *Table {
+func NewTable(creatorUserId int64) *Table {
 	tableLocker.Lock()
 	defer tableLocker.Unlock()
 	curTableId += rand.Int63n(100)
 	user := &entity.TableUser{
-		Uid:    creatorUid,
+		UserId: creatorUserId,
 		SeatNo: 0,
 	}
 	table := &Table{
@@ -109,7 +109,7 @@ func (t *Table) AddUser(userId int64) (success bool) {
 	}
 
 	newUser := &entity.TableUser{
-		Uid:    userId,
+		UserId: userId,
 		Table:  (*entity.Table)(t),
 		SeatNo: seatNo,
 	}
@@ -125,7 +125,7 @@ func (t *Table) ExitUser(userId int64) {
 	defer t.Unlock()
 
 	for i, user := range t.Users {
-		if user.Uid == userId {
+		if user.UserId == userId {
 			if t.Status == GameRunning {    // 游戏进行中，则该用户退出后，为该用户设置一个机器人
 				// todo 设置机器人
 			} else {
@@ -176,10 +176,10 @@ func (t *Table) onTimeOut() {
  */
 func (t *Table) OnUserShot(userId int64, shotPoker entity.Pokers) bool {
 	turnUser := t.TurnUser
-	if userId != turnUser.Uid {
+	if userId != turnUser.UserId {
 		return false
 	}
-	if canShot, remainedPokers := rule.Rule().CanShot(t.LastShotPokers, turnUser.HandPokers, shotPoker); canShot {
+	if canShot, remainedPokers := rule.JustWatchRule.CanShot(t.LastShotPokers, turnUser.HandPokers, shotPoker); canShot {
 		turnUser.HandPokers = remainedPokers
 		t.TurnUser = t.FindNextUser(int(turnUser.SeatNo))
 		t.LastShotPokers = shotPoker
@@ -197,8 +197,9 @@ func (t *Table) OnUserShot(userId int64, shotPoker entity.Pokers) bool {
  */
 func (t *Table) Sync2AllUsers() {
 	for _, user := range t.Users {
-		if
-		t.sync(user)
+		if user != nil {
+			t.sync(user)
+		}
 	}
 }
 

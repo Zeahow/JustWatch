@@ -14,10 +14,10 @@ func (w WebSocket) Init(handle Handler) {
 	go handle(w)
 }
 
-func (WebSocket) Read() (msg *protocol.Message, err error) {
+func (WebSocket) Read() (msg *protocol.RequestMessage, err error) {
 	return
 }
 
-func (WebSocket) Write(msg *protocol.Message) (err error) {
+func (WebSocket) Write(msg *protocol.ResponseMessage) (err error) {
 	return
 }
