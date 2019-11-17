@@ -197,6 +197,7 @@ func (t *Table) OnUserShot(userId int64, shotPoker entity.Pokers) bool {
  */
 func (t *Table) Sync2AllUsers() {
 	for _, user := range t.Users {
+		if
 		t.sync(user)
 	}
 }
