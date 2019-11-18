@@ -1,9 +1,10 @@
-package service
+package table
 
 import (
 	"github.com/zeahow/just_watch/conf"
 	"github.com/zeahow/just_watch/entity"
 	"github.com/zeahow/just_watch/rule"
+	"github.com/zeahow/just_watch/service"
 	"math/rand"
 	"sync"
 	"time"
@@ -18,15 +19,21 @@ const (
 )
 
 var (
-	curTableId  int64 = 10000
-	tableLocker       = sync.RWMutex{}
+	curTableId int64 = 10000
+	tableMutex       = sync.RWMutex{}
 
-	TableId2Table = make(map[int64]*Table, conf.DefaultTableNum)
+	tableId2Table = make(map[int64]*Table, conf.DefaultTableNum)
 )
 
+func TableOf(tableId int64) *Table {
+	tableMutex.RLock()
+	defer tableMutex.RUnlock()
+	return tableId2Table[tableId]
+}
+
 func NewTable(creatorUserId int64) *Table {
-	tableLocker.Lock()
-	defer tableLocker.Unlock()
+	tableMutex.Lock()
+	defer tableMutex.Unlock()
 	curTableId += rand.Int63n(100)
 	user := &entity.TableUser{
 		UserId: creatorUserId,
@@ -40,7 +47,7 @@ func NewTable(creatorUserId int64) *Table {
 	user.Table = (*entity.Table)(table)
 	table.Users[0] = user
 	table.Reset()
-	TableId2Table[table.Id] = table
+	tableId2Table[table.Id] = table
 	return table
 }
 
@@ -165,7 +172,7 @@ func (t *Table) StartGame() bool {
  * 出牌超时，自动不出牌
  */
 func (t *Table) onTimeOut() {
-	(*TableUser)(t.TurnUser).ShotPoker(entity.Pokers{})
+	(*service.TableUser)(t.TurnUser).ShotPokers(entity.Pokers{})
 }
 
 /*

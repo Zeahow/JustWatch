@@ -7,6 +7,8 @@ package protocol
  */
 const (
 	UnknownMsg    int32 = iota // 未知
+	CommonReq                  // 通用Request
+	CommonResp                 // 通用Response
 	RegisterReq                // 注册Request
 	RegisterResp               // 注册Response
 	LoginReq                   // 登录Request

@@ -1,70 +1,53 @@
 package service
 
 import (
-	"github.com/zeahow/just_watch/conf"
 	"github.com/zeahow/just_watch/dal"
 	"github.com/zeahow/just_watch/infrastructure/protocol"
 	"github.com/zeahow/just_watch/infrastructure/transport"
-	"sync"
 )
 
 type User int64
 
-var (
-	userMutex = sync.RWMutex{}
-	userId2Client = make(map[int64]*Client, conf.DefaultClientNum)
-)
-
-
-type userService struct {
-	sync.RWMutex
-	userId2Client map[int64]*Client // ReqUserId => Client信息
+func UserOf(userId int64) User {
+	return User(userId)
 }
 
 /*
  * 检查用户是否已登录
  */
 func (u User) IsLogged() bool {
-	userMutex.RLock()
-	defer userMutex.RUnlock()
-
-	_, isLogged := userId2Client[int64(u)]
-	return isLogged
+	return ClientOf(int64(u)) != nil
 }
 
 /*
  * 检查连接t和用户id是否匹配
  */
 func (u User) IsTransMatched(t transport.Transporter) bool {
-	userMutex.RLock()
-	defer userMutex.RUnlock()
-
-	return u.IsLogged() && userId2Client[int64(u)].Transporter == t
+	client := ClientOf(int64(u))
+	return client != nil && client.Transporter == t
 }
 
 /*
- * 登录
+ * 注册
  */
-func (u User) Login(t transport.Transporter, reqMsg *protocol.RequestMessage) error {
-	resp := &protocol.ResponseMessage{MsgType: protocol.LoginResp}
-	client := &Client{Transporter: t}
+func (u User) Register(t transport.Transporter, reqMsg *protocol.RequestMessage) (userId int64, err error) {
+	return 0, nil
+}
 
+/*
+ * 检查账号密码是否合法
+ */
+func (u User) Login(reqMsg *protocol.RequestMessage, respMsg *protocol.ResponseMessage) *protocol.ResponseMessage {
 	userInfo, ok := reqMsg.OptionalBody.(protocol.UserInfo)
+	respMsg = &protocol.ResponseMessage{MsgType: protocol.LoginResp}
 	if !ok {
-		return client.Response(resp.WithRequired(0, false, "数据错误"))
+		return respMsg.WithRequired(0, false, protocol.WrongRequest)
 	}
 
 	userId := dal.UserDal.GetUserId(userInfo.UserName, userInfo.Password)
 	if userId == 0 {
-		return client.Response(resp.WithRequired(0, false, "账号或密码错误"))
+		return respMsg.WithRequired(0, false, protocol.WrongUserInfo)
 	}
-
-	userMutex.Lock()
-	defer userMutex.Unlock()
-	userId2Client[userId] = &Client{
-		UserId:      userId,
-		Transporter: t,
-	}
-	resp.ReqUserId = userId
-	return client.Response(resp.WithRequired(0, true, ""))
+	reqMsg.UserId = userId  // 回写登录后的UserId到请求消息里
+	return respMsg.WithRequired(userId, true, protocol.NoErrors)
 }

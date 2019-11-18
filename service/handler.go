@@ -8,34 +8,53 @@ import (
 
 func Handle(t transport.Transporter) {
 	var reqMsg *protocol.RequestMessage
+	var respMsg = &protocol.ResponseMessage{}
+	var client *Client
 	for err := error(nil); err != nil; logErr(err) {
 		reqMsg, err = t.Read()
-		if reqMsg == nil || reqMsg.MsgType == protocol.UnknownMsg {
+		respMsg.MsgType = protocol.CommonResp
+
+		if client = getClient(t, reqMsg); reqMsg == nil || client == nil {
+			respMsg = respMsg.WithRequired(0, false, protocol.WrongRequest)
 			continue
 		}
-		user := User(reqMsg.UserId)
 
+		userId := respMsg.ReqUserId
 		switch reqMsg.MsgType {
 		case protocol.LoginReq: // 登录
-			err = user.Login(t, reqMsg)
-			continue
+			respMsg.MsgType = protocol.LoginResp
+			if respMsg = UserOf(userId).Login(reqMsg, respMsg); respMsg.Success {
+				client.Save()
+			}
 		case protocol.RegisterReq:
 			// todo 注册
 			continue
 		default: // 其它的消息类型需校验登录状态
-			if !user.IsTransMatched(t) {continue}
-		}
-
-		switch reqMsg.MsgType {
-		case protocol.LogoutReq:
-
+			respMsg = respMsg.WithRequired(0, false, protocol.WrongRequest)
 		}
 	}
 
 }
 
+func getClient(t transport.Transporter, reqMsg *protocol.RequestMessage) (client *Client) {
+	if reqMsg == nil || reqMsg.MsgType == protocol.UnknownMsg {
+		return nil
+	}
+
+	client = ClientOf(reqMsg.UserId)
+	// 登录或注册需生成临时Client
+	if reqMsg.MsgType == protocol.LoginResp || reqMsg.MsgType == protocol.RegisterReq {
+		client = TempClient(t)
+	}
+
+	if client == nil || client.Transporter != t {
+		return nil
+	}
+	return client
+}
+
 func logErr(err error) {
-	if err !=nil {
+	if err != nil {
 		fmt.Println(err)
 	}
 }
